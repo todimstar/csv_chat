@@ -184,6 +184,246 @@ if csv_data is not None and not csv_data.empty:
 
 这些工具可以集成到您的开发环境中，在编码时实时提供反馈。
 
+## 🚀 部署到服务器 🚀
+
+想让你的 AI 磁盘空间分析助手被更多人访问吗？把它部署到云服务器上是个好主意！这里，我们以华为云服务器为例，一步步教你怎么做。
+
+#### 更新服务器并安装基本工具
+
+登录服务器后，最好先更新一下系统软件包，并安装一些我们接下来会用到的基本工具，比如 `git`（用来下载代码）、`python3` 和 `pip`（用来运行我们的 Python 程序）。
+
+以 Ubuntu 为例，运行以下命令：
+
+```bash
+# 更新软件包列表
+sudo apt update
+
+# 升级已安装的软件包
+sudo apt upgrade -y
+
+# 安装 git, python3, python3-pip 和 python3-venv (用于创建虚拟环境)
+sudo apt install -y git python3 python3-pip python3-venv
+```
+
+对于 CentOS 或其他 Linux 发行版，命令会略有不同（例如使用 `yum` 而不是 `apt`）。你可以搜索“<你的Linux发行版名称> 安装 git python3 pip”来找到对应的命令。
+
+### 3. 上传并配置 AI 磁盘分析助手
+
+#### 获取项目代码
+
+你有两种主要方式把项目代码弄到服务器上：
+
+1.  **使用 Git 克隆 (推荐)**: 如果你的代码已经放到了像 GitHub、Gitee 这样的代码托管平台上，可以直接在服务器上克隆下来。
+    ```bash
+    git clone <你的代码仓库URL>
+    cd Pycsstoai # 进入项目目录
+    ```
+2.  **手动上传**: 你可以把整个项目文件夹（比如 `Pycsstoai`）压缩成一个 `.zip` 文件，然后通过 SCP (Secure Copy Protocol) 或者 FTP (File Transfer Protocol) 工具上传到服务器上，再解压缩。
+    *   例如使用 SCP (在你的本地电脑上运行，不是在服务器上):
+        ```bash
+        scp -r /path/to/your/local/Pycsstoai 用户名@你的服务器公网IP:/home/用户名/ # 将本地文件夹上传到服务器的用户主目录
+        ```
+        然后在服务器上解压 (如果上传的是压缩包)。
+
+#### 创建虚拟环境并安装依赖
+
+为了不和服务器上其他 Python 项目搞混，我们最好为这个AI助手创建一个独立的 Python 环境，这叫做“虚拟环境”。
+
+在服务器的项目目录 (`Pycsstoai`) 里，运行：
+
+```bash
+# 创建一个名为 .venv 的虚拟环境
+python3 -m venv .venv
+
+# 激活虚拟环境
+source .venv/bin/activate
+
+# 现在你的命令行提示符前面应该会有一个 (.venv) 标记
+# 确保你的 requirements.txt 文件是最新的，并且在项目根目录中
+# 安装项目依赖
+pip install -r requirements.txt
+```
+
+#### 配置 AI API 密钥
+
+为了保护您的 API 密钥不被意外上传到代码仓库，本项目采用了 `config.py.example` 的方式管理配置。
+
+1.  **复制示例文件**：在 `src` 目录下，找到 `config.py.example` 文件，复制一份并将其重命名为 `config.py`。
+2.  **填写您的密钥**：打开新创建的 `src/config.py` 文件，将 `YOUR_API_KEY_HERE` 替换为您真实的 API 密钥。根据需要，您也可以修改 `api_endpoint` 和 `model_name`。
+
+```python
+# src/config.py (修改后的示例)
+class AIConfig:
+    def __init__(self):
+        # AI服务配置
+        self.api_key = "sk-YourActualAPIKey"  # 替换为你的AI服务的API密钥
+        self.api_endpoint = "https://api.siliconflow.cn/v1/chat/completions" 
+        self.model_name = "Qwen/Qwen3-8B"  
+        # ... 其他配置 ...
+```
+
+`config.py` 文件已被添加到 `.gitignore` 中，因此不会被 Git跟踪和上传。
+
+和你在本地电脑上一样，AI 功能需要 API 密钥。你有以下几种方式在服务器上配置它：
+
+1.  **环境变量 (推荐)**: 这是在服务器上配置密钥的最好方式。
+    *   编辑你的 shell 配置文件，比如 `~/.bashrc` 或 `~/.zshrc` (取决于你用的 shell)：
+        ```bash
+        nano ~/.bashrc 
+        ```
+    *   在文件末尾添加你的 API 密钥信息 (具体变量名参考 `src/config.py` 或 `src/ai_analyzer.py` 中是如何读取的，例如 `OPENAI_API_KEY`):
+        ```bash
+        export OPENAI_API_KEY="sk-YourActualOpenAIKey"
+        export OPENAI_BASE_URL="YourOptionalBaseURL"
+        # 如果有其他模型的密钥，也类似添加
+        # export MOONSHOT_API_KEY="sk-YourMoonshotKey"
+        ```
+    *   保存文件 (在 `nano` 中是 `Ctrl+O`，然后回车，再 `Ctrl+X` 退出)。
+    *   让配置生效：
+        ```bash
+        source ~/.bashrc
+        ```
+    *   你可以通过 `echo $OPENAI_API_KEY` 来检查环境变量是否设置成功。
+2.  **通过 `src/config.py` 文件**: 你也可以直接在服务器上编辑 `src/config.py` 文件，填入你的密钥。但这种方式不如环境变量安全，因为密钥会直接写在代码文件里。如果你选择这种方式，**强烈建议不要把包含真实密钥的 `config.py` 文件提交到公开的 Git 仓库中！** 你可以先在服务器上复制 `src/config.py.example` 为 `src/config.py`，然后编辑。
+
+### 4. 运行 Streamlit 应用
+
+一切准备就绪后，就可以在服务器上启动我们的 Streamlit 应用了！
+
+在激活了虚拟环境的项目目录 (`Pycsstoai`) 中，运行：
+
+```bash
+streamlit run src/app.py --server.port 8501 --server.address 0.0.0.0
+```
+
+解释一下这个命令：
+*   `streamlit run src/app.py`: 这是标准的运行 Streamlit 应用的命令。
+*   `--server.port 8501`: 指定应用监听的端口号。`8501` 是 Streamlit 的默认端口，你可以根据需要改成其他的，但要确保这个端口没被其他程序占用。
+*   `--server.address 0.0.0.0`: 这非常重要！它让 Streamlit 应用监听所有可用的网络接口，也就是说，不仅仅是服务器自己 (localhost)，外部网络也能访问到它。**如果缺少这个参数，你可能只能在服务器内部访问，而无法从你的电脑浏览器通过公网IP访问。**
+
+此时，应用应该已经在服务器上运行起来了。但如果你关闭 SSH 连接，应用也会跟着停止。我们需要让它在后台持久运行。
+
+### 5. 让应用在后台持久运行
+
+有几种方法可以让你的 Streamlit 应用在你断开 SSH 连接后继续运行：
+
+1.  **使用 `nohup` (简单快捷)**:
+    ```bash
+    nohup streamlit run src/app.py --server.port 8501 --server.address 0.0.0.0 > streamlit_app.log 2>&1 &
+    ```
+    *   `nohup`: 命令，表示 no hang up，即使终端关闭，命令也会继续执行。
+    *   `> streamlit_app.log`: 把应用的正常输出重定向到 `streamlit_app.log` 文件。
+    *   `2>&1`: 把错误输出也重定向到和正常输出一样的地方 (即 `streamlit_app.log`)。
+    *   `&`: 让命令在后台运行。
+    *   你可以通过 `cat streamlit_app.log` 查看应用的日志。
+    *   要停止它，你需要找到它的进程 ID (PID)，然后用 `kill <PID>` 命令。可以用 `ps aux | grep streamlit` 来查找。
+
+2.  **使用 `screen` 或 `tmux` (更灵活的会话管理)**:
+    `screen` 和 `tmux` 是终端复用工具，它们可以让你创建持久的会话，即使 SSH 断开，会话和里面的程序也会继续运行。下次登录时可以重新连接到这个会话。
+    *   **Screen 示例**:
+        ```bash
+        # 安装 screen (如果还没有的话)
+        # sudo apt install screen (Ubuntu)
+        # sudo yum install screen (CentOS)
+
+        # 创建一个新的 screen 会话，名叫 myapp
+        screen -S myapp
+
+        # 在 screen 会话中，激活虚拟环境并运行 streamlit
+        source .venv/bin/activate
+        streamlit run src/app.py --server.port 8501 --server.address 0.0.0.0
+
+        # 现在你可以按 Ctrl+A 然后按 D 来“分离 (detach)”这个会话，程序会继续在后台运行。
+        # 要重新连接，运行: screen -r myapp
+        # 要彻底关闭，连接后按 Ctrl+C 停止 streamlit，然后输入 exit 关闭 screen 会话。
+        ```
+    *   `tmux` 的用法类似，但快捷键不同，功能更强大一些。
+
+3.  **使用 `systemd` 服务 (更健壮和专业的做法)**:
+    把 Streamlit 应用配置成一个系统服务，这样服务器开机时它可以自动启动，如果意外挂掉也能自动重启。这种方式配置起来稍微复杂一点，但更稳定可靠。
+    *   创建一个服务文件，比如 `/etc/systemd/system/streamlit_app.service`:
+        ```bash
+        sudo nano /etc/systemd/system/streamlit_app.service
+        ```
+    *   填入以下内容 (记得修改 `User`, `WorkingDirectory`, `ExecStart` 中的路径为你自己的实际情况):
+        ```ini
+        [Unit]
+        Description=AI Disk Space Analyzer Streamlit App
+        After=network.target
+
+        [Service]
+        User=你的服务器登录用户名 # 例如 ubuntu, root, ecs-user
+        WorkingDirectory=/path/to/your/Pycsstoai # 例如 /home/ubuntu/Pycsstoai
+        ExecStart=/path/to/your/Pycsstoai/.venv/bin/streamlit run src/app.py --server.port 8501 --server.address 0.0.0.0
+        Restart=always # 或者 on-failure
+        RestartSec=5s
+        Environment="PYTHONUNBUFFERED=1"
+        # 如果需要设置环境变量给 Streamlit 应用，可以在这里加，例如：
+        # Environment="OPENAI_API_KEY=sk-YourKey"
+        # Environment="STREAMLIT_SERVER_MAX_UPLOAD_SIZE=1024" # 比如设置最大上传文件大小为1GB
+
+        [Install]
+        WantedBy=multi-user.target
+        ```
+    *   保存并关闭文件。
+    *   让 systemd 重新加载配置，并启动/启用你的服务：
+        ```bash
+        sudo systemctl daemon-reload
+        sudo systemctl start streamlit_app  # 启动服务
+        sudo systemctl enable streamlit_app # 设置开机自启
+        sudo systemctl status streamlit_app # 查看服务状态
+        sudo journalctl -u streamlit_app -f # 查看服务日志 (按 Ctrl+C 退出)
+        ```
+
+选择哪种方式取决于你的需求。对于初学者，`nohup` 或 `screen` 可能更容易上手。
+
+### 6. 配置华为云安全组
+
+即使你的 Streamlit 应用已经在服务器上运行并监听 `0.0.0.0`，默认情况下，云服务器的防火墙（在华为云上叫做“安全组”）可能仍然会阻止外部访问你指定的端口（比如 `8501`）。
+
+你需要登录到你的华为云控制台，找到你的 ECS 实例，然后配置其关联的安全组规则：
+
+1.  登录华为云管理控制台。
+2.  导航到 “弹性云服务器 ECS”。
+3.  找到你的目标服务器实例，点击实例名称进入详情。
+4.  在左侧导航栏或实例详情页中找到 “安全组” 或 “网络与安全” -> “安全组” 的选项。
+5.  选择你的实例正在使用的安全组，点击 “配置规则” 或 “修改规则”。
+6.  在 “入方向规则” 中，点击 “添加规则”。
+7.  配置如下：
+    *   **优先级**: 默认即可 (通常是 1 到 100 之间的数字，越小优先级越高)。
+    *   **策略**: 选择 “允许”。
+    *   **协议类型**: 选择 “TCP”。
+    *   **端口范围**: 输入你 Streamlit 应用使用的端口，例如 `8501` (如果只开放一个端口，起始和结束端口都填它；如果是范围，比如 `8500-8510`，则分别填写)。
+    *   **源地址**: 
+        *   为了让任何人都能访问，可以设置为 `0.0.0.0/0` (表示所有 IPv4 地址)。
+        *   如果你只想让特定 IP 地址访问，可以填入具体的 IP 或 IP段。
+        *   **注意安全风险**：`0.0.0.0/0` 会将端口暴露给整个互联网，请确保你的应用本身是安全的。
+    *   **描述**: 可选，可以写一个方便自己识别的描述，比如 “Streamlit App Port”。
+8.  点击 “确定” 保存规则。
+
+规则添加后，通常会立即生效。现在，你应该可以通过 `http://你的服务器公网IP:端口号` (例如 `http://123.45.67.89:8501`) 来访问你的 AI 磁盘分析助手了！
+
+### 7. （可选）进阶：使用域名和 HTTPS
+
+如果你想用一个好记的域名（比如 `myanalyzer.example.com`）而不是 IP 地址来访问，并且希望通过 HTTPS 加密连接来提高安全性，你通常需要：
+
+1.  **注册一个域名**。
+2.  **配置 DNS 解析**，把你的域名指向服务器的公网 IP。
+3.  **在服务器上安装一个 Web 服务器软件**，如 Nginx 或 Apache，作为反向代理。
+4.  **配置反向代理**，把来自域名的请求转发到你的 Streamlit 应用 (运行在 `localhost:8501` 上)。
+5.  **获取并配置 SSL/TLS 证书** (例如使用 Let's Encrypt 的免费证书) 来启用 HTTPS。
+
+这部分内容相对复杂，可以作为后续的优化步骤。
+
+### 8. 更新和维护
+
+*   **更新代码**: 如果你更新了本地的代码并推送到了 Git 仓库，你需要在服务器上 `git pull` 来获取最新代码，然后可能需要重启 Streamlit 应用 (如果是用 `systemd`，就是 `sudo systemctl restart streamlit_app`)。
+*   **查看日志**: 定期检查应用的日志 (比如 `streamlit_app.log` 或通过 `journalctl`)，可以帮助你发现和解决问题。
+*   **依赖更新**: 偶尔也需要在服务器的虚拟环境中更新依赖包 (`pip install -r requirements.txt --upgrade`)。
+
+部署 Web 应用是一个涉及多个环节的过程，遇到问题是很正常的。多尝试，多搜索，你会成功的！祝你的 AI 磁盘分析助手顺利上线！
+
+
 ## 注意事项
 
 *   **CSV 文件格式**: 
@@ -197,15 +437,6 @@ if csv_data is not None and not csv_data.empty:
     *   AI 分析部分为了避免超出 API 的 token 限制，会选择性地发送数据摘要或部分数据（如最大的文件列表）给 AI。
 
 ## 故障排除
-
-### Streamlit 应用启动时出现 `SyntaxError`
-
-- **问题描述**: 应用无法启动，错误日志中提示 `SyntaxError`，例如 `SyntaxError: unterminated string literal`。
-- **常见原因**: 这通常意味着代码中存在拼写错误，比如字符串的引号没有正确配对、括号不匹配等。
-- **解决方法**: 
-    1. 仔细阅读错误信息中指示的文件名和行号。
-    2. 检查对应行及其附近的代码，查找是否有未闭合的字符串（如 `f"some string...` 后面缺少了 `"`）、括号或其他明显的语法问题。
-    3. 修正错误后保存文件，然后尝试重新运行 Streamlit 应用。
 
 - **CSV 文件导入与解析**:
     - 支持通过图形界面选择 WizTree 导出的 CSV 文件。
@@ -226,7 +457,7 @@ if csv_data is not None and not csv_data.empty:
     - 所有分析结果清晰地打印在控制台/终端窗口。
 - **按类型或后缀名查询文件 (新增)**:
     - 能够根据文件分类（如“图片”、“视频”）或文件扩展名（如“jpg”、“exe”）查询并列出匹配的文件及其路径和大小。
-    - **使用方法 (当前版本)**: 此功能已在 `src/main.py` 文件中的 `query_files_by_type_or_extension` 函数实现。开发者可以在 `main` 函数中取消注释并修改示例代码来调用此查询功能。例如，查询所有“视频”文件：`query_files_by_type_or_extension(csv_data, 'category', '视频')`；查询所有扩展名为 `exe` 的文件：`query_files_by_type_or_extension(csv_data, 'extension', 'exe')`。
+    <!-- - **使用方法 (当前版本)**: 此功能已在 `src/main.py` 文件中的 `query_files_by_type_or_extension` 函数实现。开发者可以在 `main` 函数中取消注释并修改示例代码来调用此查询功能。例如，查询所有“视频”文件：`query_files_by_type_or_extension(csv_data, 'category', '视频')`；查询所有扩展名为 `exe` 的文件：`query_files_by_type_or_extension(csv_data, 'extension', 'exe')`。 -->
 
 ## AI 服务配置
 
