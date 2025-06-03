@@ -70,7 +70,7 @@
 ## 使用方法
 
 1.  **准备 WizTree CSV 文件和aiapi秘钥**: 
-    *   使用 WizTree 工具扫描您的磁盘。
+    *   使用 [WizTree](https://www.diskanalyzer.com/download) 工具扫描您的磁盘。(下载可能缓慢可以试试科学)
     *   扫描完成后，通过 WizTree 的菜单导出数据为 CSV 文件 (通常在 "文件" -> "导出CSV文件...")。
     *   请确保导出的 CSV 文件至少包含 **文件名称** (或英文 "File Name") 和 **大小** (或英文 "Size") 这两列信息。如果导出的文件有明确的 **路径** (或英文 "Path") 列，程序也会优先使用它。
     *   需要到硅基流动等平台申请兼容openAI的api规范的apikey填入src/config.py中，并选择默认模型，如需指定某个对话的ai，请在ai_analyzer.py中对应分析函数修改调用参数
