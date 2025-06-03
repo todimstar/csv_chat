@@ -1,11 +1,28 @@
-# IDE and OS specific files
+# 忽略测试文件
+to_briefTree_df.json
+briefTree.json
+aiapi上传限制猜测范围.txt
+
+
+# 建议将 tools/ 目录下的临时或测试脚本（如 test.py、indent=4.py）也加入忽略（如果这些不是正式代码）。
+tools/test.py
+tools/indent=4.py
+
+# 如果有 Mac 系统，建议加上：
+.DS_Store
+
+# 如果有 Windows 系统，建议加上：
+Thumbs.db
+desktop.ini
+
+#  (IDE和操作系统特定文件)
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
 
-# Python specific files
+# (Python 特定文件)
 __pycache__/
 *.pyc
 *.pyo
@@ -29,41 +46,43 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual environment
+# 虚拟环境
 .env
 .venv
 env/
 venv/
 ENV/
 
-# Sensitive configuration files
+# 敏感配置文件
 src/config.py
 
-# Log files
+# 日志文件
 *.log
 
-# Data files (if large or specific to local machine)
+# 数据文件 (如果大或特定于本地机器)
 *.csv
 *.xlsx
+!simpletest.csv
 
-# Jupyter Notebook checkpoints
+# Jupyter Notebook 检查点
 .ipynb_checkpoints
 
-# Coverage reports
+# 覆盖率报告
 .coverage
 .coverage.*
 htmlcov/
 coverage.xml
 
 # PyInstaller
-#  Usually these files are written by a script, but you might want to ignore them
-#  even if they are committed.
+# .spec 文件定义了 PyInstaller 如何打包你的应用
+# 如果你手动修改 .spec 文件以自定义打包过程，那么这个文件应该被版本控制。
+# 如果你总是让 PyInstaller 自动生成它，并且不需要保留特定的配置，那么忽略它也可以
 *.spec
 
-# C extensions
+# C 扩展
 *.so
 
-# Editor directories and files
+# 编辑器目录和文件
 .project
 .pydevproject
 .settings/

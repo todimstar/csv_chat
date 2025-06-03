@@ -1,0 +1,58 @@
+{
+    "vivo S15": {
+        "内部存储设备": {
+            "DCIM": {
+                "Camera": {
+                    "present_files_info": "Size:32269345901.0B,modifyTime:2025/04/28 07:59:41",
+                    "VID20250202155340.mp4": {
+                        "file_info": "Size:2224714388.0B,modifyTime:2025/02/02 23:59:37"
+                    },
+                    "VID20250325165147.mp4": {
+                        "file_info": "Size:1855656036.0B,modifyTime:2025/03/26 01:04:07"
+                    },
+                    "VID20250202140245.mp4": {
+                        "file_info": "Size:1515732276.0B,modifyTime:2025/02/02 22:06:49"
+                    },
+                    "VID20250202160024.mp4": {
+                        "file_info": "Size:1185798340.0B,modifyTime:2025/02/03 00:03:34"
+                    },
+                    "VID20250202143809.mp4": {
+                        "file_info": "Size:883158804.0B,modifyTime:2025/02/02 22:40:31"
+                    },
+                    "VID20250131184535.mp4": {
+                        "file_info": "Size:593438712.0B,modifyTime:2025/02/01 02:47:13"
+                    },
+                    "VID20230921154954.mp4": {
+                        "file_info": "Size:462195924.0B,modifyTime:2023/09/21 23:53:00"
+                    },
+                    "VID20250129183008.mp4": {
+                        "file_info": "Size:324426436.0B,modifyTime:2025/01/30 02:31:01"
+                    },
+                    "video_20250412_133745.mp4": {
+                        "file_info": "Size:275369589.0B,modifyTime:2025/04/12 21:39:53"
+                    },
+                    "VID20241109172701.mp4": {
+                        "file_info": "Size:255414100.0B,modifyTime:2024/11/10 01:28:43"
+                    },
+                    "Cshot": {
+                        "1707552366920": {
+                            "present_files_info": "Size:9340110.0B,modifyTime:2025/03/26 05:46:20",
+                            "IMG20240210160607_BURST007.jpg": {
+                                "file_info": "Size:1245772.0B,modifyTime:2024/02/11 00:06:09"
+                            },
+                            "IMG20240210160607_BURST003.jpg": {
+                                "file_info": "Size:1182072.0B,modifyTime:2024/02/11 00:06:07"
+                            },
+                            "IMG20240210160607_BURST002.jpg": {
+                                "file_info": "Size:1180773.0B,modifyTime:2024/02/11 00:06:08"
+                            },
+                            "IMG20240210160607_BURST006.jpg": {
+                                "file_info": "Size:1160859.0B,modifyTime:2024/02/11 00:06:09"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

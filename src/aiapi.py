@@ -1,12 +1,14 @@
 import requests
 import os
+from config import ai_config
 
 # 优先从环境变量读取 API Key 和 URL，如果未设置，则使用默认值
 # 注意：在实际生产环境中，强烈建议将 API Key 存储在环境变量或安全的配置文件中，而不是硬编码在代码里。
-API_KEY = os.getenv("AI_SERVICE_API_KEY", "sk-ljedshjwkadsnmgfgtamceyabvkrvneidekdbjlhceqzexje")
-API_URL = os.getenv("AI_SERVICE_ENDPOINT", "https://api.siliconflow.cn/v1/chat/completions")
+API_KEY = ai_config.api_key#os.getenv("AI_SERVICE_API_KEY", "sk-ljedshjwkadsnmgfgtamceyabvkrvneidekdbjlhceqzexje")
+API_URL = ai_config.api_endpoint#os.getenv("AI_SERVICE_ENDPOINT", "https://api.siliconflow.cn/v1/chat/completions")
+Model = ai_config.model_name#"Qwen/Qwen3-8B"
 
-def get_ai_analysis(user_content: str, system_prompt: str = None) -> str:
+def get_ai_analysis(user_content: str, system_prompt: str = None,model=Model,timeout=90) -> str:
     """
     调用AI API获取分析结果。
 
@@ -23,7 +25,7 @@ def get_ai_analysis(user_content: str, system_prompt: str = None) -> str:
         system_prompt = "你是一个助手并作为内存分析模型的指令接受者，你的主要任务是根据提供的csv文件，进行内存分布分析，提供详细的分析结果和合理的建议。你需要具备处理csv文件的能力，能够解析磁盘文件的分布数据。你需要具备数据分析的能力，能够根据数据发现内存使用的问题和瓶颈。此外，你需要具备报告生成能力，能够专业、清晰、深入浅出地呈现分析结果。如果用户在日常对话也需要作为对应领域的助手回答。"
 
     payload = {
-        "model": "Qwen/Qwen3-8B", # 模型可以根据需要进行配置
+        "model": model, # 模型可以根据需要进行配置
         "messages": [
             {
                 "role": "system",
@@ -35,7 +37,7 @@ def get_ai_analysis(user_content: str, system_prompt: str = None) -> str:
             }
         ],
         "stream": False,
-        "max_tokens": 1024, # 稍微增加max_tokens以容纳更详细的分析
+        "max_tokens": 4096, # 稍微增加max_tokens以容纳更详细的分析
         "enable_thinking": True,
         "thinking_budget": 4096,
         "min_p": 0.05,
@@ -53,7 +55,7 @@ def get_ai_analysis(user_content: str, system_prompt: str = None) -> str:
 
     try:
         print(f"\nsystem_promat={system_prompt}\nuser_content={user_content}\nuser_content的类型为{type(user_content)}\n")
-        response = requests.request("POST",API_URL, json=payload, headers=headers, timeout=60) # 增加超时设置
+        response = requests.request("POST",API_URL, json=payload, headers=headers, timeout=timeout) # 增加超时设置
         #response = requests.post(API_URL, json=payload, headers=headers, timeout=60) # 增加超时设置
         response.raise_for_status()  # 如果HTTP请求返回了不成功的状态码，则抛出HTTPError异常
         response_data = response.json().get("choices", [{}])[0]

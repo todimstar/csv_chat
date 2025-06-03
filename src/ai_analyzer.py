@@ -1,4 +1,11 @@
 from config import ai_config
+from deal_csv import calculate_category_stats, calculate_extension_stats, calculate_total_size, get_largest_items,format_size_dynamically
+import deal_tree
+import json
+
+class FolderTooLargeError(Exception):
+    """当文件夹内容超出可传给AI API的大小或token限制时抛出此异常"""
+    pass
 
 class AISuggest:
     def __init__(self):
@@ -42,6 +49,7 @@ class AISuggest:
         5. 使用清晰的格式展示分析结果，让用户容易理解"""
         
         user_content = f"请分析以下磁盘使用情况，并给出优化建议：\n{summary_data}"
+
         
         try:
             ai_result = get_ai_analysis(user_content, system_prompt)
@@ -90,36 +98,79 @@ class AISuggest:
             return f"AI清理建议生成失败: {e}"
         
 
-    def aisuggest_folder_contents(self, folder_path, file_details_dic, user_query=None):
+    def aisuggest_folder_contents(self, folder_path, file_details_df, user_query=None, files_too_big=False): #牛逼思路，加一个参数表示第一次进入还是第二次进入第一次如果报错返回则调用方传入调用2，函数内部处理
         """
         使用AI分析特定文件夹的内容，并可以结合用户提出的具体问题。
 
         :param folder_path: 用户想要分析的文件夹路径。
-        :param file_details_dic: 包含该文件夹内文件信息的字典或str。
-                                 传输前的字典或字符串应该由专门分析后返回本模块不负责处理数据
-                                 对处理前数据可能的要求Pandas DataFrame应至少包含 'File Name', 'Size', 'Path', 'Time', 'Type' (可选) 列。
+        :param file_details_df: 包含该文件夹内文件信息的Pandas DataFrame。
+                                 本模块作为中间层，会处理df->dict最后传给aiapi，同时避免前端与后端传递太多数据
+                                 对处理前数据可能的要求Pandas DataFrame应至少包含 'File Name', 'Size', 'Time', 'Type' (可选) 列。
         :param user_query: 用户关于此文件夹内容的具体问题 (可选)。
         :return: AI生成的关于文件夹内容的分析和解答字符串，或出错时返回None。
         """
         if not self.config.is_configured():
             return "AI服务未配置，无法进行文件夹内容分析。请在 src/config.py 中设置 API 密钥。"
 
-        if file_details_dic.empty:
-            return f"文件夹 {folder_path} 中没有文件数据可供分析。"
+        # 根据模式构建文件详情字典
+        if not files_too_big:
+            if file_details_df.empty:
+                return f"文件夹 {folder_path} 中没有文件数据可供分析。"
+            # 构建完整文件详情树
+            file_details_dic = deal_tree.df_to_tree(file_details_df)
+        else:
+            # 构建简化摘要字典，适用于过大情况
+            file_details_dic = {
+                '文件夹总大小': format_size_dynamically(calculate_total_size(file_details_df)),
+                '前500个最大文件': get_largest_items(file_details_df, 500),
+                '文件类型统计': calculate_category_stats(file_details_df),
+                '文件前100种扩展名统计': calculate_extension_stats(file_details_df, 100),
+                '文件路径前缀树': deal_tree.df_to_briefTree(file_details_df)
+            }
+        
+        # 统一计算字典内存和序列化大小
+        from pympler import asizeof
+        memory_usage = format_size_dynamically(asizeof.asizeof(file_details_dic))
+        json_data = json.dumps(file_details_dic)
+        json_bytes_size = len(json_data.encode('utf-8'))
+        
+        # 在全量模式下才进行限流检查
+        if not files_too_big:
+            # 限制最大文件数量
+            if len(file_details_df) > self.config.max_folder_files:
+                raise FolderTooLargeError(f"文件数量 {len(file_details_df)} 超过系统允许的最大限制 {self.config.max_folder_files}，请缩小查询范围。")
+            # 限制序列化 JSON 大小
+            if json_bytes_size > self.config.max_folder_json_size_mb * 1024 * 1024:
+                raise FolderTooLargeError(f"序列化 JSON 大小 {json_bytes_size/(1024*1024):.2f}MB 超过系统允许的最大 {self.config.max_folder_json_size_mb}MB，请缩小查询范围。")
 
+            # 估算 token 数量，使用 JSON 字节数和平均字节数来估算
+            approx_tokens = json_bytes_size / self.config.avg_bytes_per_token
+            if approx_tokens > self.config.max_tokens:
+                raise FolderTooLargeError(f"估计输入内容 token 数 {approx_tokens:.0f} 超过最大允许 {self.config.max_tokens}，请缩小查询范围。")
+            
+        #将转化后字典存入文件
+        with open('file_details_dic.json', 'w', encoding='utf-8') as f:
+            json.dump(file_details_dic, f, indent=4, ensure_ascii=False)#给人看的就保留中文吧
+        
+        #交给aiapi数据
         from aiapi import get_ai_analysis # 确保导入
 
         system_prompt = """
         你是一个智能文件夹分析助手。你的任务是：
-        1. 分析用户提供的文件夹内容摘要（包括文件类型统计和大文件示例）。
+        1. 分析用户提供的文件夹内容摘要（包括文件类型统计和大文件）。
         2. 如果用户提出了具体问题，请优先并详细地回答该问题。
         3. 如果用户没有提问，请对文件夹内容进行通用性分析，例如：
-           - 这个文件夹可能用于什么目的？
-           - 哪些文件类型占据主要空间？
-           - 是否有可以安全清理或归档的文件类型建议？
+        - 这个文件夹可能用于什么目的？
+        - 哪些文件类型占据主要空间？
+        - 哪些文件适合删除(例如
+            - 哪些文件适合删除
+            - 哪些文件占用内存大又好久没用
+            - 哪些文件好久没用且没有用的
+            - 哪些文件单纯好久没用的)
+        - 是否有可以安全清理或归档的文件类型建议？
         4. 给出关于文件管理、清理或优化的具体建议。
         5. 如果发现潜在的风险文件（如大量可执行文件、脚本在非预期位置），请提示用户注意安全。
-        6. 分析结果应该清晰、易懂、具有可操作性。"""
+        6. 回答结果应该清晰、易懂、有依据、具有可操作性、可大胆猜测但不要缺乏依据。"""
 
         user_content = ""
         if user_query:
@@ -128,9 +179,11 @@ class AISuggest:
         else:
             user_content += f"\n用户没有提出具体问题，请直接对文件夹内容进行分析：{file_details_dic}"
         
-        try:
-            ai_result = get_ai_analysis(user_content, system_prompt)
-            print(f"AI对文件夹 '{folder_path}' 的分析完成。")
+        try:          
+            
+            ai_result = get_ai_analysis(user_content, system_prompt, timeout=120)
+            print(f"AI对文件夹 '{folder_path}' 的分析完成。dict内存占用: {memory_usage}")
+            # 返回 AI 分析结果和文件详情字典内存占用
             return ai_result
         except Exception as e:
             print(f"分析文件夹 '{folder_path}' 时发生AI API调用错误: {e}")
