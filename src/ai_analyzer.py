@@ -138,15 +138,15 @@ class AISuggest:
         if not files_too_big:
             # 限制最大文件数量
             if len(file_details_df) > self.config.max_folder_files:
-                raise FolderTooLargeError(f"文件数量 {len(file_details_df)} 超过系统允许的最大限制 {self.config.max_folder_files}，请缩小查询范围。")
+                raise FolderTooLargeError(f"文件数量 {len(file_details_df)} 超过系统允许的最大限制 {self.config.max_folder_files}，建议缩小查询范围。")
             # 限制序列化 JSON 大小
             if json_bytes_size > self.config.max_folder_json_size_mb * 1024 * 1024:
-                raise FolderTooLargeError(f"序列化 JSON 大小 {json_bytes_size/(1024*1024):.2f}MB 超过系统允许的最大 {self.config.max_folder_json_size_mb}MB，请缩小查询范围。")
+                raise FolderTooLargeError(f"序列化 JSON 大小 {json_bytes_size/(1024*1024):.2f}MB 超过系统允许的最大 {self.config.max_folder_json_size_mb}MB，建议缩小查询范围。")
 
             # 估算 token 数量，使用 JSON 字节数和平均字节数来估算
             approx_tokens = json_bytes_size / self.config.avg_bytes_per_token
             if approx_tokens > self.config.max_tokens:
-                raise FolderTooLargeError(f"估计输入内容 token 数 {approx_tokens:.0f} 超过最大允许 {self.config.max_tokens}，请缩小查询范围。")
+                raise FolderTooLargeError(f"估计输入内容 token 数 {approx_tokens:.0f} 超过最大允许 {self.config.max_tokens}，建议缩小查询范围。")
             
         #将转化后字典存入文件
         with open('file_details_dic.json', 'w', encoding='utf-8') as f:

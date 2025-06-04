@@ -283,7 +283,7 @@ def main():
 
                         while thread.is_alive():
                             elapsed = time.time() - start_time
-                            placeholder.info(f"AI {'摘要' if is_summary_mode else '完整'}分析中... 花费时间: {elapsed:.1f} 秒")
+                            placeholder.info(f"AI {'摘要' if is_summary_mode else '完整'}分析中... 花费时间: {elapsed:.1f} 秒 / 据测试，api平均等待时长为60s，请耐心等待")
                             time.sleep(0.2)
                         thread.join() # 等待线程结束
 
@@ -329,7 +329,7 @@ def main():
     st.sidebar.header("关于")
     st.sidebar.info(
         "这是一个使用 Streamlit 构建的 AI 磁盘空间分析助手。\n"
-        "它可以帮助您理解 WizTree 导出的 CSV 文件中的磁盘使用情况，并提供 AI 驱动的分析和建议。\n"
+        "它可以帮助您理解 [WizTree](https://www.diskanalyzer.com) 导出的 CSV 文件中的磁盘使用情况，并提供 AI 驱动的分析和建议。\n"
     )
     
     st.sidebar.success(
