@@ -334,7 +334,7 @@ def main():
     
     st.sidebar.success(
         "此项目是开源的，您可以在 [GitHub](https://github.com/todimstar/csv_chat) 上找到它。\n"
-        "如果您有任何问题或建议，请在 GitHub 上提交问题或拉取请求。\n"
+        "如果您有任何问题或建议，请在 [GitHub](https://github.com/todimstar/csv_chat) 上提交问题或拉取请求。\n"
     )
 
 if __name__ == "__main__":

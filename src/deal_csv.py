@@ -4,8 +4,9 @@ import tkinter as tk
 from tkinter import filedialog
 import os
 
+
 def path_to_file_name(path):
-    """将路径转换为文件名"""
+    """将路径转换为文件名 \n@Depercated 该方法已停用，直接用os.path.basename(path)"""
     idx1 = path.rfind('\\')#windows
     idex2 = path.rfind('/')#mac、Linux等
     idx = max(idx1, idex2)
@@ -17,7 +18,7 @@ def path_to_file_name(path):
     return path[idx+1:]
 
 def load_csv_file():
-    """打开一个文件对话框，让用户选择一个CSV文件并使用pandas加载它。"""
+    """打开一个文件对话框，让用户选择一个CSV文件并使用pandas加载它 \n@Depercated 该方法已停用，直接用st.file_uploader"""
     try:
         root = tk.Tk()
         root.withdraw()  # Hide the main tkinter window
