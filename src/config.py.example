@@ -10,6 +10,10 @@ class AIConfig:
         # 其他配置项
         self.max_tokens = 1000  # 每次请求的最大token数 
         self.temperature = 0.7  # AI回复的创造性程度（0-1）
+        # 文件夹查询时的限制
+        self.max_folder_files = 4000           # 单次查询文件的最大数量
+        self.max_folder_json_size_mb = 1.0     # 单次查询序列化JSON最大大小 (MB)
+        self.avg_bytes_per_token = 1.5         # 平均每个token对应的字节数，用于更加准确的token预估
         
     def update_config(self, **kwargs):
         """更新配置项
