@@ -1,13 +1,12 @@
 import streamlit as st
 import pandas as pd
-import os
-from deal_csv import to_read_csv,analyze_data, format_size_dynamically # 假设main.py中有一个analyze_data函数
-from ai_analyzer import AISuggest, FolderTooLargeError # 假设ai_analyzer.py可用
+from deal_csv import to_read_csv,analyze_data, format_size_dynamically 
+from ai_analyzer import AISuggest, FolderTooLargeError 
 import time
 import threading
 
 
-# 设置页面配置，例如标题和图标
+# 设置页面配置，标题和图标
 st.set_page_config(page_title="AI 磁盘空间分析助手", layout="wide")
 
 @st.cache_data
@@ -30,21 +29,20 @@ def main():
 
     #拿到文件路径
     uploaded_file_path = st.file_uploader("选择 WizTree CSV 文件 ", type=["csv"],key="upload_csv_file")
-                            #load_csv_file()可以处理中文文件名但是没有前端显示，交互只能用一次
-    if uploaded_file_path is not None:
+                            #load_csv_file()可以处理中文文件名但是没有前端显示，交互只能用一次，所以弃用了
+    if uploaded_file_path:
         
         st.success(f"文件 '{uploaded_file_path.name}' 上传成功！")
         
-        # 读取CSV数据
-        # 尝试多种编码读取，以提高兼容性
+        # 尝试多种编码读取CSV数据，以提高兼容性
         encodings_to_try = ['utf-8', 'gbk', 'latin1']
         df = None
         for encoding in encodings_to_try:
             try:
-                # WizTree的CSV通常从第二行开始是数据，第一行是元信息
+                # WizTree的CSV通常从第二行开始是数据，第一行是元信息，但to_read_csv()会自动处理无论标题行在第一还是第二行
                 df = to_read_csv(uploaded_file_path,sep=',', encoding=encoding)
                 st.write(f"使用 {encoding} 编码成功读取文件。")
-                break # 成功读取后跳出循环
+                break 
             except Exception as e:
                 st.write(f"尝试使用 {encoding} 编码读取失败: {e}")
                 continue
@@ -53,13 +51,12 @@ def main():
             st.error("无法读取CSV文件。请确保文件格式正确，或尝试其他编码。")
             return
 
-        # 数据预处理和列名标准化 (与 main.py 中的逻辑类似)
+        # 数据预处理和列名标准化，中文有读取不了的偶现情况 
         df.columns = [col.strip() for col in df.columns]
         rename_map = {
             '文件名称': 'File Name',
-            '分配': 'Size',
+            '分配': 'Size', #采用'分配'列作为大小，因为磁盘里分配的大小是文件在磁盘中实际占用大小。windows可以压缩，使文件实际占用大小小于"大小"列显示的大小，所以不采用"大小"列
             '路径': 'Path',
-            # 根据实际WizTree输出的列名添加更多映射
         }
         df.rename(columns=rename_map, inplace=True)
         print(df.columns)
@@ -81,18 +78,15 @@ def main():
         # 将 'Size' 列转换为数值类型，处理非数字和空值
         df['Size'] = pd.to_numeric(df['Size'], errors='coerce')
         df.dropna(subset=['Size'], inplace=True)
-        df['Size'] = df['Size'].astype(float) # 确保是浮点数以便后续计算
+        df['Size'] = df['Size'].astype(float) # 确保是浮点数以便后续计算大小
 
         st.markdown("---数据预览---")
-        st.dataframe(df.head())     #在此之前的df是原始数据，在此之后的df是预处理后的数据，有修改时间等列的丢失
+        st.dataframe(df.head())
 
-        # 调用 src.main.py 中的 analyze_data 函数进行分析
+        
         st.markdown("--- 详细分析结果 ---")
         with st.spinner('正在分析数据，请稍候...'):
-            # 注意：main.py 中的 analyze_data 内部有很多 print 语句，会输出到控制台
-            # 为了在 Streamlit 中获得更纯净的体验，理想情况下 analyze_data 应避免直接 print
-            # 但此处我们先直接调用
-            analysis_results = cache_analyze_data(df) #转成cache_analyze_data()缓存 # analyze_data 来自 src.main
+            analysis_results = cache_analyze_data(df) #转成cache_analyze_data()缓存 
 
         if analysis_results:
             if analysis_results.error_messages:
@@ -140,8 +134,6 @@ def main():
                     st.write(f"**{stats_data_key}**")
                     category_df_data = []
                     for category, stats_str in analysis_results.category_stats[stats_data_key].items():
-                        # 解析 '大小 (数量, 百分比)' 格式的字符串会比较复杂
-                        # 简单起见，我们直接显示字符串，或者可以考虑修改 deal_csv.py 让其返回更结构化的数据
                         category_df_data.append({'类别': category, '统计': stats_str})
                     if category_df_data:
                         category_df = pd.DataFrame(category_df_data)
@@ -152,8 +144,6 @@ def main():
                         pie_chart_data = {}
                         for category, stats_str in analysis_results.category_stats[stats_data_key].items():
                             # 尝试从 '1.23 GB (10 个条目, 12.34%)' 提取大小 (GB) 和百分比
-                            # 这部分比较脆弱，依赖于 format_size_dynamically 和 print 格式
-                            # 更好的做法是让 analyze_data 返回原始数值
                             size_part = stats_str.split('(')[0].strip()
                             size_value = float(size_part.split(' ')[0])
                             size_unit = size_part.split(' ')[1]
@@ -192,7 +182,7 @@ def main():
                         # 交互式Top N扩展名选择
                         max_ext = len(ext_df)
                         top_ext = st.slider("", min_value=0, max_value=max_ext, value=min(20, max_ext), key="top_n_ext")
-                        st.markdown(f"选择 Top {top_ext} 扩展名"+"<br>注意：请不要在 AI 分析特定文件夹时拖动该滑块，否则会使AI分析失败")
+                        st.markdown(f"选择 Top {top_ext} 扩展名"+"\n注意：请不要在 AI 分析特定文件夹时拖动该滑块，否则会使AI分析失败")
                         # 限定高度的滚动表格
                         st.dataframe(ext_df[['扩展名', '大小']].head(top_ext), height=300)
                         # 可展开查看全部扩展名
@@ -212,10 +202,11 @@ def main():
         else:
             st.error("数据分析未能返回结果。")
 
-        # AI 分析集成 (占位符或调用实际AI)
+        # AI 分析集成 
         st.markdown("--- AI 分析与建议 ---")
         analyzer = AISuggest() # AIAnalyzer 会尝试从环境变量或config读取API密钥
         
+        # 以下是AI分析的摘要模式，v0.1之后弃用了
         # 准备摘要给AI
         #summary_for_ai = f"总扫描项目数: {analysis_results.total_items_count}, 总占用空间: {format_size_dynamically(analysis_results.total_scan_size_bytes)}."
         #summary_for_ai = analysis_results.to_summary_dict()
@@ -224,7 +215,7 @@ def main():
         # st.info(f"tree_dict占用的内存:{format_size_dynamically(asizeof.asizeof(summary_for_ai))}")
         # st.markdown(summary_for_ai)
         # print(f"summary_for_ai:{summary_for_ai}")
-        # 可以在这里添加更多摘要信息，比如主要文件类型等
+        
         
         # with st.spinner('AI 正在分析磁盘使用摘要...'):
         #     ai_summary_analysis = cached_aisuggest_disk_usage_summary(summary_for_ai)
@@ -247,35 +238,44 @@ def main():
             user_query_folder = st.text_area("您对这个文件夹有什么具体问题吗？", key="user_query_f")
             submitted = st.form_submit_button("分析指定文件夹")
             if submitted and folder_path_query:
-                # 从DataFrame中筛选出该文件夹下的文件
-                # 注意：WizTree的路径可能是 'C:\Folder\Subfolder'，也可能是 'C:\Folder\Subfolder\file.txt'
-                # 我们需要找到所有以 folder_path_query 开头的条目   且需要包含该文件夹的大信息以便后续aisuggest_folder_contents算出整体大小
-                folder_files_df = df.loc[df['Path'].str.startswith(folder_path_query, na=False)]# & (df['Path'] != folder_path_query)]
+                # 路径可能是 'C:\Folder\Subfolder'，也可能是 'C:\Folder\Subfolder\file.txt'
+                folder_files_df = df.loc[df['Path'].str.startswith(folder_path_query, na=False)]# 条件列表筛选；Pands衍生定制的Series.str.startswith(pat,na=None)选择df中路径以folder_path_query开头的行，这可以获取到文件夹内所有文件，包括文件夹自身；这里不na=False在遇到NaN的'Path'列时会直接返回NaN会使df.loc()报错
                 from pympler import asizeof
-                st.info(f"folder_files_df占用的内存:{format_size_dynamically(asizeof.asizeof(folder_files_df))}")
+                import json
+                st.markdown(f"""
+                ℹ️ **信息**:
+                - folder_files_df占用的内存: {format_size_dynamically(asizeof.asizeof(folder_files_df))}
+                - 若不使用文件树处理:
+                - 1. 该df直接转json内存为: {format_size_dynamically(asizeof.asizeof(folder_files_df.to_json()))}
+                - 转json后'utf-8'序列化传给aiapi的字节数: {format_size_dynamically(len((folder_files_df.to_json()).encode('utf-8')))}
+                - 
+                - 2. 若该df直接转dict内存为: {format_size_dynamically(asizeof.asizeof(folder_files_df.to_dict()))}
+                - 转dict后转json内存为: {format_size_dynamically(asizeof.asizeof(json.dumps(folder_files_df.to_dict())))}
+                - 该json用'utf-8'序列化后传给aiapi的字节数: {format_size_dynamically(len((json.dumps(folder_files_df.to_dict())).encode('utf-8')))}
+                """)
 
                 if not folder_files_df.empty:
-                    # --- 重构AI调用及实时耗时显示 ---
-                    ai_call_params = {
+                    # --- AI调用及实时耗时显示 ---
+                    ai_call_params = {  # 之后调用aisuggest_folder_contents()的参数字典
                         "folder_path": folder_path_query,
                         "file_details_df": folder_files_df,
                         "user_query": user_query_folder if user_query_folder else None
                     }
                     ai_folder_analysis = None
-                    placeholder = st.empty() # 用于实时更新耗时
+                    placeholder = st.empty() # 先占个位，用于实时更新耗时
 
                     def perform_ai_call_with_timing(is_summary_mode=False):
-                        nonlocal ai_folder_analysis
+                        nonlocal ai_folder_analysis # 非局部变量，用于存储AI分析结果
                         current_mode_params = ai_call_params.copy()
-                        current_mode_params["files_too_big"] = is_summary_mode
+                        current_mode_params["files_too_big"] = is_summary_mode # 是否是摘要模式
                         
                         start_time = time.time()
                         # 运行AI分析的内部函数，用于线程执行
-                        result_container = {"result": None, "error": None}
-                        def analysis_in_thread():
+                        result_container = {"result": None, "error": None} # 用于存储AI分析结果和错误
+                        def analysis_in_thread(): # 线程执行的函数
                             try:
-                                result_container["result"] = analyzer.aisuggest_folder_contents(**current_mode_params)
-                            except Exception as e: # 捕获aisuggest_folder_contents内部可能抛出的其他错误
+                                result_container["result"] = analyzer.aisuggest_folder_contents(**current_mode_params)  #**current_mode_params 解包字典作为参数传入
+                            except Exception as e: 
                                 result_container["error"] = e
 
                         thread = threading.Thread(target=analysis_in_thread)
@@ -293,12 +293,12 @@ def main():
                         if result_container["error"]:
                             # 如果是 FolderTooLargeError，则触发摘要模式（如果当前不是摘要模式）
                             # 否则，直接抛出其他错误
-                            if isinstance(result_container["error"], FolderTooLargeError) and not is_summary_mode:
+                            if isinstance(result_container["error"], FolderTooLargeError) and not is_summary_mode:# 如果已经是摘要模式那就是未预料到的错误，抛出
                                 st.warning(str(result_container["error"]))
                                 return perform_ai_call_with_timing(is_summary_mode=True) # 递归调用摘要模式
                             else:
                                 st.error(f"AI分析时发生意外错误: {result_container['error']}")
-                                return None # 或其他错误处理
+                                return None 
                         else:
                             ai_folder_analysis = result_container["result"]
                             return ai_folder_analysis

@@ -2,7 +2,7 @@
 to_briefTree_df.json
 briefTree.json
 aiapi上传限制猜测范围.txt
-
+docs/课设报告/
 
 # 建议将 tools/ 目录下的临时或测试脚本（如 test.py、indent=4.py）也加入忽略（如果这些不是正式代码）。
 tools/test.py

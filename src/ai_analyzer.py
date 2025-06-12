@@ -4,7 +4,7 @@ import deal_tree
 import json
 
 class FolderTooLargeError(Exception):
-    """当文件夹内容超出可传给AI API的大小或token限制时抛出此异常"""
+    """当文件夹内容超出可传给AI API的大小或token限制时抛出此异常\n用于给调用方提示，以便调正调用参数"""
     pass
 
 class AISuggest:
@@ -17,7 +17,6 @@ class AISuggest:
 
         if not self.config.is_configured():
             print("警告: AI服务API密钥未在 config.py 中配置。AI分析功能可能无法使用。")
-        # 实际应用中，这里可以初始化API客户端，例如 openai.api_key = self.config.api_key
 
     def aisuggest_disk_usage_summary(self, summary_data):
         """
@@ -132,14 +131,19 @@ class AISuggest:
         from pympler import asizeof
         memory_usage = format_size_dynamically(asizeof.asizeof(file_details_dic))
         json_data = json.dumps(file_details_dic)
-        json_bytes_size = len(json_data.encode('utf-8'))
+        json_bytes_size = len(json_data.encode('utf-8'))    # 序列化后字符串占用的字节数,主要用于后面的token估算，所以用utf-8编码
         
         # 在全量模式下才进行限流检查
         if not files_too_big:
-            # 限制最大文件数量
+        #   本次存储为了debug对比
+            with open('file_details_dic.json', 'w', encoding='utf-8') as f:
+                json.dump(file_details_dic, f, indent=4, ensure_ascii=False)#给人看的就保留中文吧
+                f.write(f"\n\n完整模式下：\n文件夹 '{folder_path}' 转成dict_tree的内存占用: {memory_usage}\n其序列化 JSON 大小 {format_size_dynamically(json_bytes_size)}\n估计输入内容 token 数 {(json_bytes_size / self.config.avg_bytes_per_token):.1f}\n文件数量 {len(file_details_df)}\n")
+
+            # 限制最大文件数量，len(file_details_df)代表文件数量
             if len(file_details_df) > self.config.max_folder_files:
                 raise FolderTooLargeError(f"文件数量 {len(file_details_df)} 超过系统允许的最大限制 {self.config.max_folder_files}，建议缩小查询范围。")
-            # 限制序列化 JSON 大小
+            # 限制序列化 JSON 大小，单位是MB，大范围限制aiapi单次请求的Mb大小(一些厂商有说明4MB，虽然一般都是token先超出)
             if json_bytes_size > self.config.max_folder_json_size_mb * 1024 * 1024:
                 raise FolderTooLargeError(f"序列化 JSON 大小 {json_bytes_size/(1024*1024):.2f}MB 超过系统允许的最大 {self.config.max_folder_json_size_mb}MB，建议缩小查询范围。")
 
@@ -148,13 +152,16 @@ class AISuggest:
             if approx_tokens > self.config.max_tokens:
                 raise FolderTooLargeError(f"估计输入内容 token 数 {approx_tokens:.0f} 超过最大允许 {self.config.max_tokens}，建议缩小查询范围。")
             
-        #将转化后字典存入文件
-        with open('file_details_dic.json', 'w', encoding='utf-8') as f:
-            json.dump(file_details_dic, f, indent=4, ensure_ascii=False)#给人看的就保留中文吧
-        
+        # 将转化后字典存入文件，用于debug看传给aiapi了个啥格式
+        if files_too_big:
+            with open('file_details_dic.json', 'a', encoding='utf-8') as f:
+                f.write(f"\n\n简化模式下：\n文件夹 '{folder_path}' 转成file_brief_details_dic的内存占用: {memory_usage}\n其序列化 JSON 大小 {format_size_dynamically(json_bytes_size)}\n估计输入内容 token 数 {(json_bytes_size / self.config.avg_bytes_per_token):.1f}\n文件数量 {len(file_details_df)}\n")
+                json.dump(file_details_dic, f, indent=4, ensure_ascii=False)#给人看的就保留中文吧
+
         #交给aiapi数据
         from aiapi import get_ai_analysis # 确保导入
 
+        # 精心调制的系统提示，可以修改你的人设和任务
         system_prompt = """
         你是一个智能文件夹分析助手。你的任务是：
         1. 分析用户提供的文件夹内容摘要（包括文件类型统计和大文件）。
@@ -181,8 +188,8 @@ class AISuggest:
         
         try:          
             
-            ai_result = get_ai_analysis(user_content, system_prompt, timeout=120)
-            print(f"AI对文件夹 '{folder_path}' 的分析完成。dict内存占用: {memory_usage}")
+            ai_result = get_ai_analysis(user_content, system_prompt, timeout=120)   #如果思考则可能超过90s，所以设置120s
+            # print(f"AI对文件夹 '{folder_path}' 的分析完成。dict内存占用: {memory_usage}")
             # 返回 AI 分析结果和文件详情字典内存占用
             return ai_result
         except Exception as e:
@@ -193,10 +200,7 @@ class AISuggest:
 
 # 示例用法 (用于测试此模块)
 if __name__ == "__main__":
-    # 现在配置通过 src/config.py 管理
-    # 您需要编辑 src/config.py 文件并填入您的 API 密钥
-    # from src.config import ai_config
-    # ai_config.update_config(api_key="YOUR_API_KEY_HERE")
+
     analyzer = AISuggest()
 
     # 测试分析磁盘使用摘要

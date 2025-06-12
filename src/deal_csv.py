@@ -1,4 +1,3 @@
-# src/deal_csv.py
 import pandas as pd
 import tkinter as tk
 from tkinter import filedialog
@@ -6,7 +5,7 @@ import os
 
 
 def path_to_file_name(path):
-    """将路径转换为文件名 \n@Depercated 该方法已停用，直接用os.path.basename(path)"""
+    """将路径转换为文件名 \n@Depercated 该方法已停用，直接用os.path.basename(path)替代更好"""
     idx1 = path.rfind('\\')#windows
     idex2 = path.rfind('/')#mac、Linux等
     idx = max(idx1, idex2)
@@ -21,7 +20,7 @@ def load_csv_file():
     """打开一个文件对话框，让用户选择一个CSV文件并使用pandas加载它 \n@Depercated 该方法已停用，直接用st.file_uploader"""
     try:
         root = tk.Tk()
-        root.withdraw()  # Hide the main tkinter window
+        root.withdraw()  # 隐藏主tkinter窗口
         file_path = filedialog.askopenfilename(
             title="请选择 WizTree 导出的 CSV 文件",
             filetypes=(("CSV 文件", "*.csv"), ("所有文件", "*.*"))
@@ -40,7 +39,7 @@ def format_size_dynamically(size_bytes):
         return "0 B"
     size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
     i = 0
-    while size_bytes >= 1024 and i < len(size_name) - 1:
+    while size_bytes >= 1024 and i < len(size_name) - 1:    # 只要大于1024就上一层，直到小于1024或达到最大size_name层级
         size_bytes /= 1024.0
         i += 1
     return f"{size_bytes:.2f} {size_name[i]}"
@@ -52,18 +51,19 @@ def to_read_csv(file_input, sep=',', encoding='utf-8'):
     try:
         first_line_str = ""
         # 预读取第一行，用于判断表头
-        if hasattr(file_input, 'seek') and hasattr(file_input, 'readline'):
+        if hasattr(file_input, 'seek') and hasattr(file_input, 'readline'): # hasattr() 函数用于检查对象是否具有指定的属性,这里检查file_input是否具有seek()和readline()方法，因为之后读取文件时需要这两方法
             # 如果是 UploadedFile 或已打开的文件对象
             file_input.seek(0)  # 确保从文件开头读取
             # UploadedFile.readline() 返回 bytes, 需要解码
             first_line_bytes = file_input.readline()
             try:
+                # 按照传入的encoding解码
                 first_line_str = first_line_bytes.decode(encoding).strip()
             except AttributeError: # 如果readline()直接返回了str (不太可能，但做兼容)
                  first_line_str = first_line_bytes.strip()
             file_input.seek(0)  # 再次重置指针，以便pandas完整读取
         elif isinstance(file_input, str):
-            # 如果是文件路径字符串
+            # 如果是文件路径字符串，直接打开
             with open(file_input, 'r', encoding=encoding) as f:
                 first_line_str = f.readline().strip()
         else:
@@ -89,7 +89,7 @@ def to_read_csv(file_input, sep=',', encoding='utf-8'):
         header_row = 1 if title_is_second else 0
 
         # 让 pandas 处理 UploadedFile 或文件路径
-        # pd.read_csv 本身就能很好地处理 UploadedFile 对象和文件路径
+        # pd.read_csv 本身就能很好地处理 UploadedFile 对象和文件路径，这很省心了
         df = pd.read_csv(file_input, sep=sep, header=header_row, encoding=encoding)
         return df
 
@@ -108,7 +108,7 @@ class AnalysisResult:
         self.category_stats = {}  # 按类别统计，格式: {类别: (总大小, 文件数, 百分比)}
         self.extension_stats = {}  # 按扩展名统计，格式: {扩展名: 总大小}
         self.error_messages = []  # 存储分析过程中的错误/警告信息
-        #self.raw_data = None  # 存储原始DataFrame以供进一步分析    原始数据太大不能传给ai
+        #self.raw_data = None  # 存储原始DataFrame以供进一步分析    原始数据太大不能传给ai，后续用deal_tree.py的tree_data分析代替
 
     def add_error(self, message):
         """添加错误信息"""
@@ -132,7 +132,6 @@ def analyze_data(df):
 
     # 创建分析结果对象
     result = AnalysisResult()
-    #result.raw_data = df.copy()  # 保存原始数据 #原始数据太大不能传给ai
 
     print("\n开始数据分析...")
 
@@ -146,9 +145,6 @@ def analyze_data(df):
     total_scan_size = calculate_total_size(df)
     result.total_scan_size_bytes = total_scan_size
     result.total_items_count = len(df)
-
-    print(f"扫描文件总大小: {format_size_dynamically(total_scan_size)} ({total_scan_size:,} 字节)")
-    print(f"总文件/文件夹数量: {len(df)}")
 
     # 获取最大条目
     largest_items = get_largest_items(df)
@@ -348,7 +344,6 @@ def query_files_by_type_or_extension(df, query_type, query_value):
     # 确保用于分类的列存在
     if 'Category' not in df.columns or 'Extension' not in df.columns:
         # 尝试重新生成分类和扩展名列，如果它们在分析中未生成或丢失
-        # 这部分逻辑与 analyze_data 中的文件识别和分类逻辑类似
         files_df_query = None
         if 'Folders' in df.columns and isinstance(df['Folders'], pd.Series):
             files_df_query = df[df['Folders'] == 0].copy()

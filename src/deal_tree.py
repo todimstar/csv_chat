@@ -2,7 +2,7 @@ import pandas as pd
 import json
 
 class AnalysisResult:
-    """用于存储分析结果的数据结构"""
+    """存文件树的处理结果类"""
     def __init__(self):
         
         self.error_messages = []  # 存储分析过程中的错误/警告信息
@@ -32,14 +32,14 @@ def analyze_data_tree_for_json(df):
     return json
 
 def df_to_tree(df):
-    '''将df转换为树结构'''
-    # 将df转换为树结构
+    '''正常将df转换为树结构'''
+    # 字典树
     tree_dict = {}
     
     # 遍历df的每一行，对File Name进行拆分，分别存入tree_dict的层次中，最后才拿行中信息存入最后一层
     for index, row in df.iterrows():
         file_PathAndName = row['File Name']
-        path_parts = file_PathAndName.split('\\')#转义后为\
+        path_parts = file_PathAndName.split('\\')#转义后为\ # 因为分析的只会是Windows路径，所以不会出现其他路径分隔符
        
         present_dict = tree_dict
         for part in path_parts:

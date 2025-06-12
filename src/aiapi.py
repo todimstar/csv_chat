@@ -37,7 +37,7 @@ def get_ai_analysis(user_content: str, system_prompt: str = None,model=Model,tim
             }
         ],
         "stream": False,
-        "max_tokens": 4096, # 稍微增加max_tokens以容纳更详细的分析
+        "max_tokens": 4096, # 稍微增加max_tokens以容纳更详细的分析，目前好像4096是最大了
         "enable_thinking": True,
         "thinking_budget": 4096,
         "min_p": 0.05,
