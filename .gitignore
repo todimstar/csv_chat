@@ -1,6 +1,7 @@
 # 忽略测试文件
 to_briefTree_df.json
 briefTree.json
+file_details_dic.json
 aiapi上传限制猜测范围.txt
 docs/课设报告/
 
@@ -63,6 +64,7 @@ src/config.py
 *.csv
 *.xlsx
 !simpletest.csv
+!C.Ep.56GB.csv
 
 # Jupyter Notebook 检查点
 .ipynb_checkpoints
